@@ -97,7 +97,7 @@ class Server:
 
     def submit_transaction(
         self,
-        transaction_envelope: Union[TransactionEnvelope, str],
+        transaction_envelope: Union[TransactionEnvelope, FeeBumpTransactionEnvelope, str],
         skip_memo_required_check: bool = False,
     ) -> Union[
         WrappedResponse[TransactionResponse],
@@ -126,7 +126,7 @@ class Server:
 
     def __submit_transaction_sync(
         self,
-        transaction_envelope: Union[TransactionEnvelope, str],
+        transaction_envelope: Union[TransactionEnvelope, FeeBumpTransactionEnvelope, str],
         skip_memo_required_check: bool,
     ) -> WrappedResponse[TransactionResponse]:
         url = urljoin_with_query(self.horizon_url, "transactions")
@@ -144,7 +144,7 @@ class Server:
 
     async def __submit_transaction_async(
         self,
-        transaction_envelope: Union[TransactionEnvelope, str],
+        transaction_envelope: Union[TransactionEnvelope, FeeBumpTransactionEnvelope, str],
         skip_memo_required_check: bool,
     ) -> WrappedResponse[TransactionResponse]:
         url = urljoin_with_query(self.horizon_url, "transactions")
