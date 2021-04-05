@@ -22,7 +22,6 @@ from .call_builder.strict_send_paths_call_builder import StrictSendPathsCallBuil
 from .call_builder.trades_aggregation_call_builder import TradeAggregationsCallBuilder
 from .call_builder.trades_call_builder import TradesCallBuilder
 from .call_builder.transactions_call_builder import TransactionsCallBuilder
-from .client.base_async_client import BaseAsyncClient
 from .client.base_sync_client import BaseSyncClient
 from .client.requests_client import RequestsClient
 from .client.response import Response
@@ -68,23 +67,18 @@ class Server:
     def __init__(
         self,
         horizon_url: str = "https://horizon-testnet.stellar.org/",
-        client: Union[BaseAsyncClient, BaseSyncClient] = None,
+        client: BaseSyncClient = None,
     ) -> None:
         self.horizon_url: str = horizon_url
 
         if not client:
             client = RequestsClient()
-        self._client: Union[BaseAsyncClient, BaseSyncClient] = client
+        self._client: BaseSyncClient = client
 
-        if isinstance(self._client, BaseAsyncClient):
-            self.__async: bool = True
-        elif isinstance(self._client, BaseSyncClient):
-            self.__async = False
-        else:
+        if not isinstance(self._client, BaseSyncClient):
             raise TypeError(
                 "This `client` class should be an instance "
-                "of `stellar_sdk.client.base_async_client.BaseAsyncClient` "
-                "or `stellar_sdk.client.base_sync_client.BaseSyncClient`."
+                "of `stellar_sdk.client.base_async_client.BaseSyncClient`."
             )
 
     def submit_transaction(
@@ -107,15 +101,9 @@ class Server:
             :exc:`UnknownRequestError <stellar_sdk.exceptions.UnknownRequestError>`
             :exc:`AccountRequiresMemoError <stellar_sdk.sep.exceptions.AccountRequiresMemoError>`
         """
-        if self.__async:
-            return self.__submit_transaction_async(
-                transaction_envelope, skip_memo_required_check
-            )
-        return self.__submit_transaction_sync(
-            transaction_envelope, skip_memo_required_check
-        )
+        return self.__submit_transaction(transaction_envelope, skip_memo_required_check)
 
-    def __submit_transaction_sync(
+    def __submit_transaction(
         self,
         transaction_envelope: Union[
             TransactionEnvelope, FeeBumpTransactionEnvelope, str
@@ -127,28 +115,9 @@ class Server:
             transaction_envelope
         )
         if not skip_memo_required_check:
-            self.__check_memo_required_sync(tx)
+            self.__check_memo_required(tx)
         data = {"tx": xdr}
         resp = self._client.post(url=url, data=data)
-        assert isinstance(resp, Response)
-        raise_request_exception(resp)
-        return resp.json()
-
-    async def __submit_transaction_async(
-        self,
-        transaction_envelope: Union[
-            TransactionEnvelope, FeeBumpTransactionEnvelope, str
-        ],
-        skip_memo_required_check: bool,
-    ) -> Dict[str, Any]:
-        url = urljoin_with_query(self.horizon_url, "transactions")
-        xdr, tx = self.__get_xdr_and_transaction_from_transaction_envelope(
-            transaction_envelope
-        )
-        if not skip_memo_required_check:
-            await self.__check_memo_required_async(tx)
-        data = {"tx": xdr}
-        resp = await self._client.post(url=url, data=data)  # type: ignore[misc]
         assert isinstance(resp, Response)
         raise_request_exception(resp)
         return resp.json()
@@ -379,25 +348,9 @@ class Server:
             account = account_id.public_key
         else:
             account = account_id
-        if self.__async:
-            return self.__load_account_async(account)
-        return self.__load_account_sync(account)
+        return self.__load_account(account)
 
-    async def __load_account_async(self, account_id: str) -> Account:
-        resp = await self.accounts().account_id(account_id=account_id).call()  # type: ignore[misc]
-        assert isinstance(resp, dict)
-        sequence = int(resp["sequence"])
-        thresholds = Thresholds(
-            resp["thresholds"]["low_threshold"],
-            resp["thresholds"]["med_threshold"],
-            resp["thresholds"]["high_threshold"],
-        )
-        account = Account(account_id=account_id, sequence=sequence)
-        account.signers = resp["signers"]
-        account.thresholds = thresholds
-        return account
-
-    def __load_account_sync(self, account_id: str) -> Account:
+    def __load_account(self, account_id: str) -> Account:
         resp = self.accounts().account_id(account_id=account_id).call()
         assert isinstance(resp, dict)
         sequence = int(resp["sequence"])
@@ -411,7 +364,7 @@ class Server:
         account.thresholds = thresholds
         return account
 
-    def __check_memo_required_sync(
+    def __check_memo_required(
         self, transaction: Union[Transaction, FeeBumpTransaction]
     ) -> None:
         if isinstance(transaction, FeeBumpTransaction):
@@ -428,24 +381,6 @@ class Server:
             except NotFoundError:
                 continue
             assert isinstance(account_resp, dict)
-            self.__check_destination_memo(account_resp, index, destination)
-
-    async def __check_memo_required_async(
-        self, transaction: Union[Transaction, FeeBumpTransaction]
-    ) -> None:
-        if isinstance(transaction, FeeBumpTransaction):
-            transaction = transaction.inner_transaction_envelope.transaction
-        if not (transaction.memo is None or isinstance(transaction.memo, NoneMemo)):
-            return
-        for index, destination in self.__get_check_memo_required_destinations(
-            transaction
-        ):
-            if destination.startswith(MUXED_ACCOUNT_STARTING_LETTER):
-                continue
-            try:
-                account_resp = await self.accounts().account_id(destination).call()  # type: ignore[misc]
-            except NotFoundError:
-                continue
             self.__check_destination_memo(account_resp, index, destination)
 
     def __check_destination_memo(
@@ -483,7 +418,7 @@ class Server:
             destinations.add(destination)
             yield index, destination
 
-    def fetch_base_fee(self) -> Union[int, Coroutine[Any, Any, int]]:
+    def fetch_base_fee(self) -> int:
         """Fetch the base fee. Since this hits the server, if the server call fails,
         you might get an error. You should be prepared to use a default value if that happens.
 
@@ -495,18 +430,11 @@ class Server:
             :exc:`BadResponseError <stellar_sdk.exceptions.BadResponseError>`
             :exc:`UnknownRequestError <stellar_sdk.exceptions.UnknownRequestError>`
         """
-        if self.__async:
-            return self.__fetch_base_fee_async()
-        return self.__fetch_base_fee_sync()
+        return self.__fetch_base_fee()
 
-    def __fetch_base_fee_sync(self) -> int:
+    def __fetch_base_fee(self) -> int:
         latest_ledger = self.ledgers().order(desc=True).limit(1).call()
         assert isinstance(latest_ledger, dict)
-        base_fee = self.__handle_base_fee(latest_ledger)
-        return base_fee
-
-    async def __fetch_base_fee_async(self) -> int:
-        latest_ledger = await self.ledgers().order(desc=True).limit(1).call()  # type: ignore[misc]
         base_fee = self.__handle_base_fee(latest_ledger)
         return base_fee
 
@@ -522,27 +450,15 @@ class Server:
             )
         return base_fee
 
-    def close(self) -> Union[None, Coroutine[Any, Any, None]]:  # type: ignore[misc]
+    def close(self) -> None:
         """Close underlying connector.
 
         Release all acquired resources.
         """
-        if self.__async:
-            return self.__close_async()
-        else:
-            return self.__close_sync()  # type: ignore[func-returns-value]
-
-    async def __close_async(self) -> None:
-        await self._client.close()
+        self._client.close()
 
     def __close_sync(self) -> None:
         self._client.close()
-
-    async def __aenter__(self) -> "Server":
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        await self.close()  # type: ignore[misc]
 
     def __enter__(self) -> "Server":
         return self
