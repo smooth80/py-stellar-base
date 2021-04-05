@@ -1,14 +1,11 @@
-from typing import Union
-
 from ..asset import Asset
 from ..call_builder.base_call_builder import BaseCallBuilder
-from ..client.base_async_client import BaseAsyncClient
 from ..client.base_sync_client import BaseSyncClient
 from ..exceptions import ValueError
 
 
 class TradeAggregationsCallBuilder(BaseCallBuilder):
-    """ Creates a new :class:`TradeAggregationsCallBuilder` pointed to server defined by horizon_url.
+    """Creates a new :class:`TradeAggregationsCallBuilder` pointed to server defined by horizon_url.
     Do not create this object directly, use :func:`stellar_sdk.server.Server.trade_aggregations`.
 
     Trade Aggregations facilitate efficient gathering of historical trade data.
@@ -32,7 +29,7 @@ class TradeAggregationsCallBuilder(BaseCallBuilder):
     def __init__(
         self,
         horizon_url: str,
-        client: Union[BaseAsyncClient, BaseSyncClient],
+        client: BaseSyncClient,
         base: Asset,
         counter: Asset,
         resolution: int,

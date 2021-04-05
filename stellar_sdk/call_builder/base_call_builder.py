@@ -1,18 +1,16 @@
 from typing import (
     Union,
-    Coroutine,
     Any,
     Dict,
     Mapping,
     Generator,
-    AsyncGenerator,
     Optional,
 )
 
 from ..client.base_async_client import BaseAsyncClient
 from ..client.base_sync_client import BaseSyncClient
 from ..client.response import Response
-from ..exceptions import raise_request_exception, NotPageableError
+from ..exceptions import raise_request_exception, NotPageableError, TypeError
 from ..utils import urljoin_with_query
 
 
@@ -25,22 +23,20 @@ class BaseCallBuilder:
     :param client: The client instance used to send request.
     """
 
-    def __init__(
-        self, horizon_url: str, client: Union[BaseAsyncClient, BaseSyncClient]
-    ) -> None:
-
-        self.__async: bool = False
-        if isinstance(client, BaseAsyncClient):
-            self.__async = True
-
-        self.client: Union[BaseAsyncClient, BaseSyncClient] = client
+    def __init__(self, horizon_url: str, client: BaseSyncClient) -> None:
+        if not isinstance(client, BaseSyncClient):
+            raise TypeError(
+                "This `client` class should be an instance "
+                "of `stellar_sdk.client.base_async_client.BaseSyncClient`."
+            )
+        self.client: BaseSyncClient = client
         self.horizon_url: str = horizon_url
         self.params: Dict[str, str] = {}
         self.endpoint: str = ""
         self.prev_href: Optional[str] = None
         self.next_href: Optional[str] = None
 
-    def call(self) -> Union[Dict[str, Any], Coroutine[Any, Any, Dict[str, Any]]]:
+    def call(self) -> Dict[str, Any]:
         """Triggers a HTTP request using this builder's current configuration.
 
         :return: If it is called synchronous, the response will be returned. If
@@ -58,22 +54,8 @@ class BaseCallBuilder:
         url = urljoin_with_query(self.horizon_url, self.endpoint)
         return self.__call(url, self.params)
 
-    def __call(self, url: str, params: dict = None):
-        if self.__async:
-            return self.__call_async(url, params)
-        else:
-            return self.__call_sync(url, params)
-
-    def __call_sync(self, url: str, params: dict = None) -> Dict[str, Any]:
+    def __call(self, url: str, params: dict = None) -> Dict[str, Any]:
         raw_resp = self.client.get(url, params)
-        assert isinstance(raw_resp, Response)
-        raise_request_exception(raw_resp)
-        resp = raw_resp.json()
-        self._check_pageable(resp)
-        return resp
-
-    async def __call_async(self, url: str, params: dict = None) -> Dict[str, Any]:
-        raw_resp = await self.client.get(url, params)  # type: ignore[misc]
         assert isinstance(raw_resp, Response)
         raise_request_exception(raw_resp)
         resp = raw_resp.json()
@@ -82,9 +64,7 @@ class BaseCallBuilder:
 
     def stream(
         self,
-    ) -> Union[
-        AsyncGenerator[Dict[str, Any], None], Generator[Dict[str, Any], None, None]
-    ]:
+    ) -> Generator[Dict[str, Any], None, None]:
         """Creates an EventSource that listens for incoming messages from the server.
 
         See `Horizon Response Format <https://www.stellar.org/developers/horizon/reference/responses.html>`_
@@ -96,18 +76,6 @@ class BaseCallBuilder:
 
         :raise: :exc:`StreamClientError <stellar_sdk.exceptions.StreamClientError>` - Failed to fetch stream resource.
         """
-        if self.__async:
-            return self.__stream_async()
-        else:
-            return self.__stream_sync()
-
-    async def __stream_async(self) -> AsyncGenerator[Dict[str, Any], None]:
-        url = urljoin_with_query(self.horizon_url, self.endpoint)
-        stream = self.client.stream(url, self.params)
-        while True:
-            yield await stream.__anext__()  # type: ignore[union-attr]
-
-    def __stream_sync(self) -> Generator[Dict[str, Any], None, None]:
         url = urljoin_with_query(self.horizon_url, self.endpoint)
         return self.client.stream(url, self.params)  # type: ignore[return-value]
 

@@ -1,10 +1,9 @@
 from typing import Union, List
 
-from ..utils import convert_assets_to_horizon_param
 from ..asset import Asset
 from ..call_builder.base_call_builder import BaseCallBuilder
-from ..client.base_async_client import BaseAsyncClient
 from ..client.base_sync_client import BaseSyncClient
+from ..utils import convert_assets_to_horizon_param
 
 
 class StrictSendPathsCallBuilder(BaseCallBuilder):
@@ -40,7 +39,7 @@ class StrictSendPathsCallBuilder(BaseCallBuilder):
     def __init__(
         self,
         horizon_url: str,
-        client: Union[BaseAsyncClient, BaseSyncClient],
+        client: BaseSyncClient,
         source_asset: Asset,
         source_amount: str,
         destination: Union[str, List[Asset]],

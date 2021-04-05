@@ -1,12 +1,11 @@
 from typing import Union
 
 from ..call_builder.base_call_builder import BaseCallBuilder
-from ..client.base_async_client import BaseAsyncClient
 from ..client.base_sync_client import BaseSyncClient
 
 
 class OperationsCallBuilder(BaseCallBuilder):
-    """ Creates a new :class:`OperationsCallBuilder` pointed to server defined by horizon_url.
+    """Creates a new :class:`OperationsCallBuilder` pointed to server defined by horizon_url.
     Do not create this object directly, use :func:`stellar_sdk.server.Server.operations`.
 
     See `All Operations <https://www.stellar.org/developers/horizon/reference/endpoints/operations-all.html>`_
@@ -15,9 +14,7 @@ class OperationsCallBuilder(BaseCallBuilder):
     :param client: The client instance used to send request.
     """
 
-    def __init__(
-        self, horizon_url, client: Union[BaseAsyncClient, BaseSyncClient]
-    ) -> None:
+    def __init__(self, horizon_url, client: BaseSyncClient) -> None:
         super().__init__(horizon_url, client)
         self.endpoint: str = "operations"
 
