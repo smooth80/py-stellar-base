@@ -1,6 +1,6 @@
 from stellar_sdk import Asset
 
-from stellar_sdk.call_builder import StrictReceivePathsCallBuilder
+from stellar_sdk.call_builder.call_builder_sync import StrictReceivePathsCallBuilder
 
 from tests.call_builder import horizon_url, client
 

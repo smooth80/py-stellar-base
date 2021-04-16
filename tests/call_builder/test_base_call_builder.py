@@ -1,7 +1,7 @@
 import pytest
 
 from stellar_sdk.__version__ import __version__
-from stellar_sdk.call_builder import BaseCallBuilder
+from stellar_sdk.call_builder.call_builder_sync import CallBuilder
 from stellar_sdk.client.aiohttp_client import AiohttpClient
 from stellar_sdk.client.requests_client import RequestsClient
 from stellar_sdk.exceptions import BadRequestError, NotFoundError, NotPageableError
@@ -13,7 +13,7 @@ class TestBaseCallBuilder:
         url = "https://httpbin.org/get"
         client = AiohttpClient()
         resp = (
-            await BaseCallBuilder(url, client)
+            await CallBuilder(url, client)
             .cursor(89777)
             .order(desc=False)
             .limit(25)
@@ -32,7 +32,7 @@ class TestBaseCallBuilder:
         url = "https://httpbin.org/get"
         client = RequestsClient()
         resp = (
-            BaseCallBuilder(url, client).limit(10).cursor(10086).order(desc=True).call()
+            CallBuilder(url, client).limit(10).cursor(10086).order(desc=True).call()
         )
         assert resp["args"] == {"cursor": "10086", "limit": "10", "order": "desc"}
         assert resp["headers"][
@@ -48,7 +48,7 @@ class TestBaseCallBuilder:
     async def test_get_stream_data_async(self):
         url = "https://horizon.stellar.org/ledgers"
         client = AiohttpClient()
-        resp = BaseCallBuilder(url, client).cursor("now").stream()
+        resp = CallBuilder(url, client).cursor("now").stream()
         messages = []
         async for msg in resp:
             assert isinstance(msg, dict)
@@ -61,7 +61,7 @@ class TestBaseCallBuilder:
     def test_stream_data_sync(self):
         url = "https://horizon.stellar.org/ledgers"
         client = RequestsClient()
-        resp = BaseCallBuilder(url, client).cursor("now").stream()
+        resp = CallBuilder(url, client).cursor("now").stream()
         messages = []
         for msg in resp:
             assert isinstance(msg, dict)
@@ -73,7 +73,7 @@ class TestBaseCallBuilder:
         url = "https://horizon.stellar.org/accounts/BADACCOUNTID"
         client = RequestsClient()
         with pytest.raises(BadRequestError) as err:
-            BaseCallBuilder(url, client).call()
+            CallBuilder(url, client).call()
 
         exception = err.value
         assert exception.status == 400
@@ -89,7 +89,7 @@ class TestBaseCallBuilder:
         url = "https://horizon.stellar.org/not_found"
         client = RequestsClient()
         with pytest.raises(NotFoundError) as err:
-            BaseCallBuilder(url, client).call()
+            CallBuilder(url, client).call()
 
         exception = err.value
         assert exception.status == 404
@@ -108,7 +108,7 @@ class TestBaseCallBuilder:
         url = "https://horizon.stellar.org/accounts/BADACCOUNTID"
         client = AiohttpClient()
         with pytest.raises(BadRequestError) as err:
-            await BaseCallBuilder(url, client).call()
+            await CallBuilder(url, client).call()
 
         exception = err.value
         assert exception.status == 400
@@ -125,7 +125,7 @@ class TestBaseCallBuilder:
         url = "https://horizon.stellar.org/not_found"
         client = AiohttpClient()
         with pytest.raises(NotFoundError) as err:
-            await BaseCallBuilder(url, client).call()
+            await CallBuilder(url, client).call()
 
         exception = err.value
         assert exception.status == 404
@@ -143,7 +143,7 @@ class TestBaseCallBuilder:
         url = "https://httpbin.org/get"
         client = RequestsClient()
         call_builder = (
-            BaseCallBuilder(url, client).limit(10).cursor(10086).order(desc=True)
+            CallBuilder(url, client).limit(10).cursor(10086).order(desc=True)
         )
         call_builder.call()
         assert call_builder.next_href is None
@@ -153,7 +153,7 @@ class TestBaseCallBuilder:
         url = "https://httpbin.org/get"
         client = RequestsClient()
         call_builder = (
-            BaseCallBuilder(url, client).limit(10).cursor(10086).order(desc=True)
+            CallBuilder(url, client).limit(10).cursor(10086).order(desc=True)
         )
         call_builder.call()
         with pytest.raises(NotPageableError, match="The next page does not exist."):
@@ -166,7 +166,7 @@ class TestBaseCallBuilder:
         url = "https://horizon.stellar.org/transactions"
         client = RequestsClient()
         call_builder = (
-            BaseCallBuilder(url, client)
+            CallBuilder(url, client)
             .cursor(81058917781504)
             .limit(10)
             .order(desc=True)
@@ -212,7 +212,7 @@ class TestBaseCallBuilder:
         url = "https://httpbin.org/get?version=1.2&auth=myPassw0wd"
         client = RequestsClient()
         resp = (
-            BaseCallBuilder(url, client).limit(10).cursor(10086).order(desc=True).call()
+            CallBuilder(url, client).limit(10).cursor(10086).order(desc=True).call()
         )
         assert resp["args"] == {
             "auth": "myPassw0wd",

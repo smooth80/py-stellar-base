@@ -23,6 +23,7 @@ receiver_public_key = "GA7YNBW5CBTJZ3ZZOWX3ZNBKD6OE7A7IHUQVWMY62W2ZBG2SGZVOOPVH"
 # To use the live network, set the hostname to 'horizon.stellar.org'
 server = Server(horizon_url="https://horizon-testnet.stellar.org")
 
+a = server.accounts().limit(10)
 # Transactions require a valid sequence number that is specific to this account.
 # We can fetch the current sequence number for the source account from Horizon.
 source_account = server.load_account(source_public_key)

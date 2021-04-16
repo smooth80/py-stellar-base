@@ -1,6 +1,6 @@
 from stellar_sdk import Asset
 
-from stellar_sdk.call_builder.claimable_balances_call_builder import (
+from stellar_sdk.call_builder.call_builder_sync import (
     ClaimableBalancesCallBuilder,
 )
 from tests.call_builder import horizon_url, client

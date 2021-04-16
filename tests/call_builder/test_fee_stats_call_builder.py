@@ -1,4 +1,4 @@
-from stellar_sdk.call_builder import FeeStatsCallBuilder
+from stellar_sdk.call_builder.call_builder_sync import FeeStatsCallBuilder
 from tests.call_builder import horizon_url, client
 
 
